@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Экран 1. Ввод данных на смену</h2>
+  <div class="muted">База Знаний: онтология CourierRouting.pont / .pins ({{ kb_summary }}), правил «ЕСЛИ-ТО»: {{ rules_count }} ({{ productions }} продукций, kb/rules.json)</div>
+  {% for w in load_warnings %}<div class="flash error">{{ w }}</div>{% endfor %}
+
+  <h3>Заказы</h3>
+  <table>
+    <tr><th>№</th><th>Адрес</th><th>Приоритет</th><th>Вес, кг</th><th>Временное окно</th><th>Зона</th><th>Статус</th><th></th></tr>
+    {% for o in shift.orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.address }}</td>
+      <td><span class="tag {{ o.priority }}">{{ o.priority_label }}</span></td>
+      <td>{{ o.weight|dec }}</td>
+      <td>{{ o.window_start|hhmm }}-{{ o.window_end|hhmm }}</td>
+      <td>{{ o.zone_name or '-' }}{% if o.restricted %} <span class="tag gray">огр. въезда</span>{% endif %}</td>
+      <td>
+        {% if o.status == 'new' %}<span class="tag info">новый</span>
+        {% elif o.status == 'retry' %}<span class="tag medium">повторная попытка</span>
+        {% elif o.status == 'assigned' %}<span class="tag gray">в маршруте</span>
+        {% else %}<span class="tag low">доставлен</span>{% endif %}
+      </td>
+      <td>{% if o.active %}
+        <form class="inline" method="post" action="{{ url_for('delete_order', oid=o.id) }}">
+          <button class="btn link" title="Удалить заказ">×</button></form>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">Заказов нет - добавьте заказ вручную или загрузите CSV.</td></tr>
+    {% endfor %}
+  </table>
+
+  <div class="box">
+    <form method="post" action="{{ url_for('add_order') }}">
+      <div class="grid">
+        <div><label>№ заказа (необязательно)</label>
+          <input name="order_id" value="{{ form.order_id }}" class="{{ 'err' if errors.order_id }}" placeholder="авто">
+          {% if errors.order_id %}<div class="ferr">{{ errors.order_id }}</div>{% endif %}</div>
+        <div style="grid-column: span 2"><label>Адрес</label>
+          <input name="address" list="addresses" value="{{ form.address }}" class="{{ 'err' if errors.address }}" placeholder="начните вводить адрес...">
+          <datalist id="addresses">{% for a in addresses %}<option value="{{ a }}">{% endfor %}</datalist>
+          {% if errors.address %}<div class="ferr">{{ errors.address }}</div>{% endif %}</div>
+        <div><label>Приоритет</label>
+          <select name="priority" class="{{ 'err' if errors.priority }}">
+            {% for p in priorities %}<option value="{{ p }}" {{ 'selected' if (form.priority or 'medium') == p }}>{{ {'high':'высокий','medium':'средний','low':'низкий'}.get(p, p) }}</option>{% endfor %}
+          </select>
+          {% if errors.priority %}<div class="ferr">{{ errors.priority }}</div>{% endif %}</div>
+        <div><label>Вес, кг</label>
+          <input name="weight" value="{{ form.weight }}" class="{{ 'err' if errors.weight }}" placeholder="0,0">
+          {% if errors.weight %}<div class="ferr">{{ errors.weight }}</div>{% endif %}</div>
+        <div><label>Окно с</label>
+          <input name="window_start" value="{{ form.window_start }}" class="{{ 'err' if errors.window_start }}" placeholder="ЧЧ:ММ">
+          {% if errors.window_start %}<div class="ferr">{{ errors.window_start }}</div>{% endif %}</div>
+        <div><label>Окно до</label>
+          <input name="window_end" value="{{ form.window_end }}" class="{{ 'err' if errors.window_end }}" placeholder="ЧЧ:ММ">
+          {% if errors.window_end %}<div class="ferr">{{ errors.window_end }}</div>{% endif %}</div>
+      </div>
+      <div class="actions"><button class="btn sec">+ Добавить заказ</button></div>
+    </form>
+    <form method="post" action="{{ url_for('upload_orders') }}" enctype="multipart/form-data" class="actions">
+      <input type="file" name="file" accept=".csv">
+      <button class="btn sec">Загрузить CSV</button>
+      <button class="btn sec" name="sample" value="1">Загрузить пример (sample_orders.csv)</button>
+    </form>
+  </div>
+
+  <form method="post" action="{{ url_for('plan') }}">
+    <div class="cols">
+      <div>
+        <h3>Курьеры на смене</h3>
+        <table>
+          <tr><th></th><th>Курьер</th><th>Транспорт</th><th>Груз, кг</th><th>Рейтинг</th></tr>
+          {% for c in shift.couriers %}{% set busy = shift.route_of(c.id) %}
+          <tr>
+            <td><input type="checkbox" name="active_{{ c.id }}" {{ 'checked' if c.active }} {{ 'disabled' if busy }}></td>
+            <td>{{ c.short_name }}{% if busy %}<br><a href="{{ url_for('route_view', rid=busy.id) }}" class="tag gray">на маршруте {{ busy.id }}</a>{% endif %}</td>
+            <td>{{ c.vehicle_label|lower }}</td>
+            <td>{{ c.capacity|dec }}</td>
+            <td><input name="rating_{{ c.id }}" value="{{ c.rating|dec }}" size="3" {{ 'disabled' if busy }}></td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <div>
+        <h3>Дорожная обстановка</h3>
+        <table>
+          <tr><th>Участок</th><th>Состояние</th><th>Задержка, мин</th></tr>
+          {% for g in shift.segments %}
+          <tr>
+            <td>{{ g.name }}</td>
+            <td><select name="state_{{ g.id }}">{% for cls, label in states %}<option value="{{ cls }}" {{ 'selected' if g.state == cls }}>{{ label }}</option>{% endfor %}</select></td>
+            <td><input name="delay_{{ g.id }}" value="{{ g.delay }}" size="3"></td>
+          </tr>
+          {% endfor %}
+        </table>
+        <div class="actions"><span class="muted">Начало смены</span>
+          <input name="start_time" value="{{ shift.start_min|hhmm }}" size="5"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn pri">Построить маршрут</button>
+    </div>
+  </form>
+  <form method="post" action="{{ url_for('reset') }}" class="actions">
+    <button class="btn sec small" onclick="return confirm('Сбросить все введенные данные и маршруты?')">Сбросить данные (загрузить из БЗ)</button>
+  </form>
+</div>
+{% endblock %}

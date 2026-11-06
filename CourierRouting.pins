@@ -1,0 +1,124 @@
+; Fri Oct 23 15:00:00 MSK 2026
+; 
+;+ (version "3.5")
+;+ (build "Build 663")
+
+
+
+([Dispatcher_Ivanova] of  Dispatcher
+
+	(fullName "Иванова Анна Сергеевна")
+	(phone "+375291112233")
+	(manages [Route_R1] [Route_R2]))
+
+([Courier_Petrov] of  Courier
+
+	(fullName "Петров Илья Андреевич")
+	(phone "+375297654321")
+	(courierRating 4.8)
+	(usesVehicle [Car_VW_Caddy])
+	(executes [Route_R1]))
+
+([Courier_Sidorov] of  Courier
+
+	(fullName "Сидоров Максим Олегович")
+	(phone "+375331234567")
+	(courierRating 4.5)
+	(usesVehicle [Bicycle_Stels_Navigator])
+	(executes [Route_R2]))
+
+([Car_VW_Caddy] of  Car
+
+	(maxLoadKg 600.0)
+	(avgSpeedKmh 35.0))
+
+([Bicycle_Stels_Navigator] of  Bicycle
+
+	(maxLoadKg 15.0)
+	(avgSpeedKmh 15.0))
+
+([Zone_Centr] of  RestrictedZone
+
+	(zoneName "Центр (пешеходная зона)"))
+
+([Zone_Uruchye] of  OpenZone
+
+	(zoneName "Уручье"))
+
+([Traffic_Pobediteley] of  Congestion
+
+	(roadSegment "пр. Победителей, у ст. м. Немига")
+	(delayMin 18))
+
+([Traffic_Nezavisimosti] of  FreeFlow
+
+	(roadSegment "пр. Независимости, Уручье")
+	(delayMin 0))
+
+([Order_1001] of  Order
+
+	(orderId "1001")
+	(address "ул. Городецкая, 32")
+	(priority high)
+	(weightKg 12.5)
+	(windowStart "10:00")
+	(windowEnd "11:00")
+	(belongsToZone [Zone_Uruchye])
+	(includedInRoute [Route_R1]))
+
+([Order_1002] of  Order
+
+	(orderId "1002")
+	(address "пр. Независимости, 168")
+	(priority medium)
+	(weightKg 40.0)
+	(windowStart "11:00")
+	(windowEnd "13:00")
+	(belongsToZone [Zone_Uruchye])
+	(includedInRoute [Route_R1]))
+
+([Order_1003] of  Order
+
+	(orderId "1003")
+	(address "ул. Интернациональная, 9")
+	(priority high)
+	(weightKg 2.0)
+	(windowStart "12:00")
+	(windowEnd "12:30")
+	(belongsToZone [Zone_Centr])
+	(includedInRoute [Route_R2]))
+
+([Order_1004] of  Order
+
+	(orderId "1004")
+	(address "ул. Зыбицкая, 4")
+	(priority low)
+	(weightKg 3.5)
+	(windowStart "14:00")
+	(windowEnd "18:00")
+	(belongsToZone [Zone_Centr])
+	(includedInRoute [Route_R2]))
+
+([Route_R1] of  Route
+
+	(routeId "R1")
+	(includesOrder [Order_1001] [Order_1002])
+	(managedBy [Dispatcher_Ivanova])
+	(executedBy [Courier_Petrov])
+	(affectedBy [Traffic_Pobediteley])
+	(passesThrough [Zone_Uruchye])
+	(totalDistanceKm 14.2)
+	(estimatedTimeMin 55)
+	(routeStatus in_progress))
+
+([Route_R2] of  Route
+
+	(routeId "R2")
+	(includesOrder [Order_1003] [Order_1004])
+	(managedBy [Dispatcher_Ivanova])
+	(executedBy [Courier_Sidorov])
+	(affectedBy [Traffic_Nezavisimosti])
+	(passesThrough [Zone_Centr])
+	(totalDistanceKm 4.1)
+	(estimatedTimeMin 25)
+	(routeStatus forming))

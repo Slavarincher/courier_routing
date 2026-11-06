@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Экран 2. Варианты маршрута</h2>
+  <div class="stat muted">
+    <span>Начало смены: <b>{{ result.start_min|hhmm }}</b></span>
+    <span>Курьеров с маршрутом: <b>{{ result.plans|length }}</b></span>
+    <span>Сработало правил: <b>{{ result.trace|length }}</b></span>
+    <span>Время вывода: <b>{{ result.elapsed_ms|dec }} мс</b></span>
+  </div>
+  {% if result.unassigned %}
+  <div class="box bad"><b>Не назначены заказы:</b>
+    <ul>{% for w in result.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  <div class="actions">
+    <form method="post" action="{{ url_for('recalculate') }}" class="inline"><button class="btn sec">Пересчитать</button></form>
+    <a class="btn sec" href="{{ url_for('index') }}">Назад к вводу</a>
+  </div>
+</div>
+
+{% for p in result.plans %}{% set rec = p.recommended %}
+<div class="card">
+  <h2>Курьер {{ p.courier.short_name }} ({{ p.courier.vehicle_label|lower }}, {{ p.courier.capacity|dec }} кг)</h2>
+  <div class="muted">Заказы: {{ p.orders|map(attribute='id')|join(', ') }}; груз {{ p.orders|sum(attribute='weight')|dec }} из {{ p.courier.capacity|dec }} кг</div>
+  <form method="post" action="{{ url_for('approve') }}">
+    <input type="hidden" name="courier_id" value="{{ p.courier.id }}">
+    <table style="margin-top:10px">
+      <tr><th></th><th>Вариант</th><th>Порядок точек</th><th>Длина</th><th>В пути</th><th>Окончание</th><th>Риск опоздания</th><th>Оценка</th></tr>
+      {% for v in p.variants %}
+      <tr class="{{ 'best' if loop.first }}">
+        <td>{% if not p.approved_route %}<input type="radio" name="variant" value="{{ v.label }}" {{ 'checked' if loop.first }}>{% endif %}</td>
+        <td class="nw"><b>{{ v.label }}</b>{% if loop.first %} (рекомендуется){% endif %}</td>
+        <td>{{ v.description }}</td>
+        <td class="nw">{{ v.distance_km|dec }} км</td>
+        <td class="nw">{{ v.drive_min }} мин</td>
+        <td>{{ v.end_min|hhmm }}</td>
+        <td><span class="tag {{ {'низкий':'low','средний':'medium','высокий':'high'}[v.risk] }}">{{ v.risk }}</span></td>
+        <td><b>{{ v.score }}</b></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <details>
+      <summary>Расписание по вариантам</summary>
+      {% for v in p.variants %}
+      <table style="margin-top:8px">
+        <tr><th colspan="6">Вариант {{ v.label }}</th></tr>
+        <tr><th>№</th><th>Заказ</th><th>Адрес</th><th>Окно</th><th>Прибытие</th><th>Вручение</th></tr>
+        {% for s in v.stops %}
+        <tr><td>{{ loop.index }}</td><td>{{ s.order_id }}{% if s.urgent %} <span class="tag high">срочный</span>{% endif %}</td>
+          <td>{{ s.address }}</td><td>{{ s.window_start|hhmm }}-{{ s.window_end|hhmm }}</td>
+          <td>{{ s.arrival|hhmm }}</td>
+          <td>{{ s.start|hhmm }}{% if s.late_min %} <span class="tag high">опоздание {{ s.late_min }} мин</span>{% endif %}</td></tr>
+        {% endfor %}
+      </table>
+      {% endfor %}
+    </details>
+    <div class="box"><b>Почему вариант {{ rec.label }}</b>
+      <ul>{% for line in p.explanation %}<li>{{ line }}</li>{% endfor %}</ul></div>
+    {% for w in p.warnings %}<div class="box warn"><b>Предупреждение:</b> {{ w }}</div>{% endfor %}
+    <div class="actions">
+      {% if p.approved_route %}
+        <span class="tag low">Утвержден маршрут {{ p.approved_route }}</span>
+        <a class="btn sec" href="{{ url_for('route_view', rid=p.approved_route) }}">Открыть маршрут</a>
+      {% else %}
+        <button class="btn ok">Утвердить выбранный вариант</button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endfor %}
+
+<div class="card">
+  <details>
+    <summary>Журнал логического вывода ({{ result.trace|length }} срабатываний правил)</summary>
+    <table class="trace" style="margin-top:8px">
+      <tr><th>Этап</th><th>Правило</th><th>Вывод</th></tr>
+      {% for t in result.trace %}
+      <tr><td>{{ {'classify':'анализ данных','check':'проверка плана','event':'событие'}.get(t.phase, t.phase) }}</td>
+        <td>{{ t.rule }}. {{ t.name }}</td><td>{{ t.text }}</td></tr>
+      {% endfor %}
+    </table>
+  </details>
+</div>
+{% endblock %}

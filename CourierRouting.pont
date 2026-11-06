@@ -1,0 +1,396 @@
+; Fri Oct 23 15:00:00 MSK 2026
+; 
+;+ (version "3.5")
+;+ (build "Build 663")
+
+
+
+(defclass %3ACLIPS_TOP_LEVEL_SLOT_CLASS "Fake class to save top-level slot information"
+	(is-a USER)
+	(role abstract)
+	(multislot manages
+;+		(comment "Диспетчер управляет маршрутами")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot managedBy)
+		(create-accessor read-write))
+	(single-slot managedBy
+;+		(comment "Маршрут управляется диспетчером")
+		(type INSTANCE)
+;+		(allowed-classes Dispatcher)
+;+		(inverse-slot manages)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(multislot executes
+;+		(comment "Курьер выполняет маршрут")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot executedBy)
+		(create-accessor read-write))
+	(single-slot executedBy
+;+		(comment "Маршрут выполняется курьером")
+		(type INSTANCE)
+;+		(allowed-classes Courier)
+;+		(inverse-slot executes)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot usesVehicle
+;+		(comment "Курьер использует транспортное средство")
+		(type INSTANCE)
+;+		(allowed-classes Vehicle)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(multislot includesOrder
+;+		(comment "Маршрут включает заказы")
+		(type INSTANCE)
+;+		(allowed-classes Order)
+;+		(inverse-slot includedInRoute)
+		(create-accessor read-write))
+	(single-slot includedInRoute
+;+		(comment "Заказ входит в маршрут")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot includesOrder)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(multislot affectedBy
+;+		(comment "На маршрут влияет дорожная обстановка")
+		(type INSTANCE)
+;+		(allowed-classes TrafficCondition)
+		(create-accessor read-write))
+	(multislot passesThrough
+;+		(comment "Маршрут проходит через зоны")
+		(type INSTANCE)
+;+		(allowed-classes DeliveryZone)
+		(create-accessor read-write))
+	(single-slot belongsToZone
+;+		(comment "Заказ относится к зоне доставки")
+		(type INSTANCE)
+;+		(allowed-classes DeliveryZone)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot fullName
+;+		(comment "ФИО")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot phone
+;+		(comment "Телефон")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot courierRating
+;+		(comment "Рейтинг курьера (0-5)")
+		(type FLOAT)
+		(range 0.0 5.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot orderId
+;+		(comment "Номер заказа")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot address
+;+		(comment "Адрес доставки")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot priority
+;+		(comment "Приоритет заказа")
+		(type SYMBOL)
+		(allowed-values high medium low)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot weightKg
+;+		(comment "Вес груза, кг")
+		(type FLOAT)
+		(range 0.0 1000.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot windowStart
+;+		(comment "Начало временного окна (ЧЧ:ММ)")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot windowEnd
+;+		(comment "Конец временного окна (ЧЧ:ММ)")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot maxLoadKg
+;+		(comment "Грузоподъёмность, кг")
+		(type FLOAT)
+		(range 0.0 5000.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot avgSpeedKmh
+;+		(comment "Средняя скорость, км/ч")
+		(type FLOAT)
+		(range 0.0 150.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot routeId
+;+		(comment "Номер маршрута")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot totalDistanceKm
+;+		(comment "Протяжённость, км")
+		(type FLOAT)
+		(range 0.0 500.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot estimatedTimeMin
+;+		(comment "Расчётное время, мин")
+		(type INTEGER)
+		(range 0 1440)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot routeStatus
+;+		(comment "Статус маршрута")
+		(type SYMBOL)
+		(allowed-values forming in_progress completed)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot roadSegment
+;+		(comment "Участок дороги")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot delayMin
+;+		(comment "Задержка, мин")
+		(type INTEGER)
+		(range 0 600)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot zoneName
+;+		(comment "Название зоны")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write)))
+
+(defclass Participant "Участник процесса доставки"
+	(is-a USER)
+	(role abstract)
+	(single-slot fullName
+;+		(comment "ФИО")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot phone
+;+		(comment "Телефон")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass Dispatcher "Диспетчер"
+	(is-a Participant)
+	(role concrete)
+	(multislot manages
+;+		(comment "Диспетчер управляет маршрутами")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot managedBy)
+		(create-accessor read-write)))
+
+(defclass Courier "Курьер"
+	(is-a Participant)
+	(role concrete)
+	(single-slot usesVehicle
+;+		(comment "Курьер использует транспортное средство")
+		(type INSTANCE)
+;+		(allowed-classes Vehicle)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(multislot executes
+;+		(comment "Курьер выполняет маршрут")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot executedBy)
+		(create-accessor read-write))
+	(single-slot courierRating
+;+		(comment "Рейтинг курьера (0-5)")
+		(type FLOAT)
+		(range 0.0 5.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass Order "Заказ"
+	(is-a USER)
+	(role concrete)
+	(single-slot orderId
+;+		(comment "Номер заказа")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot address
+;+		(comment "Адрес доставки")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(single-slot priority
+;+		(comment "Приоритет заказа")
+		(type SYMBOL)
+		(allowed-values high medium low)
+		(default medium)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot weightKg
+;+		(comment "Вес груза, кг")
+		(type FLOAT)
+		(range 0.0 1000.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot windowStart
+;+		(comment "Начало временного окна (ЧЧ:ММ)")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot windowEnd
+;+		(comment "Конец временного окна (ЧЧ:ММ)")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot belongsToZone
+;+		(comment "Заказ относится к зоне доставки")
+		(type INSTANCE)
+;+		(allowed-classes DeliveryZone)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot includedInRoute
+;+		(comment "Заказ входит в маршрут")
+		(type INSTANCE)
+;+		(allowed-classes Route)
+;+		(inverse-slot includesOrder)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass Vehicle "Транспортное средство"
+	(is-a USER)
+	(role abstract)
+	(single-slot maxLoadKg
+;+		(comment "Грузоподъёмность, кг")
+		(type FLOAT)
+		(range 0.0 5000.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot avgSpeedKmh
+;+		(comment "Средняя скорость, км/ч")
+		(type FLOAT)
+		(range 0.0 150.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass Car "Автомобиль"
+	(is-a Vehicle)
+	(role concrete))
+
+(defclass Bicycle "Велосипед"
+	(is-a Vehicle)
+	(role concrete))
+
+(defclass OnFoot "Пешком"
+	(is-a Vehicle)
+	(role concrete))
+
+(defclass Route "Маршрут"
+	(is-a USER)
+	(role concrete)
+	(single-slot routeId
+;+		(comment "Номер маршрута")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write))
+	(multislot includesOrder
+;+		(comment "Маршрут включает заказы")
+		(type INSTANCE)
+;+		(allowed-classes Order)
+;+		(inverse-slot includedInRoute)
+		(create-accessor read-write))
+	(single-slot managedBy
+;+		(comment "Маршрут управляется диспетчером")
+		(type INSTANCE)
+;+		(allowed-classes Dispatcher)
+;+		(inverse-slot manages)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot executedBy
+;+		(comment "Маршрут выполняется курьером")
+		(type INSTANCE)
+;+		(allowed-classes Courier)
+;+		(inverse-slot executes)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(multislot affectedBy
+;+		(comment "На маршрут влияет дорожная обстановка")
+		(type INSTANCE)
+;+		(allowed-classes TrafficCondition)
+		(create-accessor read-write))
+	(multislot passesThrough
+;+		(comment "Маршрут проходит через зоны")
+		(type INSTANCE)
+;+		(allowed-classes DeliveryZone)
+		(create-accessor read-write))
+	(single-slot totalDistanceKm
+;+		(comment "Протяжённость, км")
+		(type FLOAT)
+		(range 0.0 500.0)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot estimatedTimeMin
+;+		(comment "Расчётное время, мин")
+		(type INTEGER)
+		(range 0 1440)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot routeStatus
+;+		(comment "Статус маршрута")
+		(type SYMBOL)
+		(allowed-values forming in_progress completed)
+		(default forming)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass TrafficCondition "Дорожная обстановка"
+	(is-a USER)
+	(role abstract)
+	(single-slot roadSegment
+;+		(comment "Участок дороги")
+		(type STRING)
+;+		(cardinality 0 1)
+		(create-accessor read-write))
+	(single-slot delayMin
+;+		(comment "Задержка, мин")
+		(type INTEGER)
+		(range 0 600)
+;+		(cardinality 0 1)
+		(create-accessor read-write)))
+
+(defclass FreeFlow "Свободное движение"
+	(is-a TrafficCondition)
+	(role concrete))
+
+(defclass Congestion "Пробка"
+	(is-a TrafficCondition)
+	(role concrete))
+
+(defclass RoadClosure "Перекрытие дороги"
+	(is-a TrafficCondition)
+	(role concrete))
+
+(defclass DeliveryZone "Зона доставки"
+	(is-a USER)
+	(role abstract)
+	(single-slot zoneName
+;+		(comment "Название зоны")
+		(type STRING)
+;+		(cardinality 1 1)
+		(create-accessor read-write)))
+
+(defclass OpenZone "Открытая зона"
+	(is-a DeliveryZone)
+	(role concrete))
+
+(defclass RestrictedZone "Зона с ограничением въезда (пешеходная/платная)"
+	(is-a DeliveryZone)
+	(role concrete))

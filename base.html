@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ЭС «Маршрут курьера»{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="top">
+  <b>ЭС «Маршрут курьера»</b>
+  <nav>
+    <a href="{{ url_for('index') }}" class="{{ 'on' if request.endpoint == 'index' }}">1. Ввод данных</a>
+    {% if has_plan %}<a href="{{ url_for('variants') }}" class="{{ 'on' if request.endpoint == 'variants' }}">2. Варианты маршрута</a>{% endif %}
+    {% for r in routes %}
+      <a href="{{ url_for('route_view', rid=r.id) }}" class="{{ 'on' if request.view_args and request.view_args.get('rid') == r.id }}">3. Маршрут {{ r.id }}{% if r.status == 'completed' %} ✓{% endif %}</a>
+    {% endfor %}
+  </nav>
+  <span class="who">{% block who %}Диспетчер: {{ shift.dispatcher }}{% endblock %}</span>
+</div>
+<div class="wrap">
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ cat }}">{{ msg }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

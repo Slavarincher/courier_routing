@@ -1,0 +1,173 @@
+{
+  "description": "Продукционные правила ЭС «Маршрут курьера» (14 правил из ЛР2). Формат: ЕСЛИ (if) - ТО (then).",
+  "parameters": {
+    "urgent_threshold_min": 180,
+    "min_rating": 4.0,
+    "cluster_radius_km": 0.8,
+    "nearby_km": 3.0,
+    "shift_margin_min": 30,
+    "deviation_km": 0.5
+  },
+  "rules": [
+    {
+      "id": "R1", "no": "1", "name": "Срочный заказ", "phase": ["classify"], "salience": 50,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "o", "type": "order", "test": [
+          ["o.priority", "==", "high"],
+          ["o.window_left_min", "<=", "@s.urgent_threshold_min"]
+        ]}
+      ],
+      "then": [{"set": "o.urgent", "value": true}],
+      "explain": "Заказ {o.id} имеет высокий приоритет, до конца окна {o.window_left_min} мин - ставится в маршрут одним из первых"
+    },
+    {
+      "id": "R2", "no": "2", "name": "Превышение грузоподъемности", "phase": ["check"], "salience": 40,
+      "if": [
+        {"bind": "u", "type": "unassigned", "test": [["u.reason", "==", "capacity"]]}
+      ],
+      "then": [{"warn": "Заказ {u.order_id} ({u.weight} кг) не помещается ни к одному свободному курьеру - переносится на следующий рейс"}],
+      "explain": "Суммарный вес превышает грузоподъемность: заказ {u.order_id} перенесен на следующий рейс"
+    },
+    {
+      "id": "R3", "no": "3", "name": "Пробка на участке", "phase": ["classify", "event"], "salience": 40,
+      "if": [
+        {"bind": "g", "type": "segment", "test": [["g.state", "==", "Congestion"]]}
+      ],
+      "then": [{"set": "g.policy", "value": "detour_or_wait"}],
+      "explain": "На участке «{g.name}» пробка (+{g.delay} мин) - предлагается объездной путь"
+    },
+    {
+      "id": "R4", "no": "4", "name": "Опоздание к временному окну", "phase": ["check"], "salience": 30,
+      "if": [
+        {"bind": "t", "type": "stop", "test": [["t.late_min", ">", 0]]}
+      ],
+      "then": [{"warn": "Курьер {t.courier_name}, вариант {t.variant}: заказ {t.order_id} будет доставлен в {t.start|time}, позже окна (до {t.window_end|time}) - повысить приоритет или переназначить заказ"}],
+      "explain": "В варианте {t.variant} заказ {t.order_id} доставляется позже временного окна на {t.late_min} мин"
+    },
+    {
+      "id": "R5", "no": "5", "name": "Курьер без автомобиля", "phase": ["classify"], "salience": 45,
+      "if": [
+        {"bind": "c", "type": "courier", "test": [["c.vehicle_class", "in", ["Bicycle", "OnFoot"]]]}
+      ],
+      "then": [{"set": "c.eco", "value": true}, {"set": "c.ignores_traffic", "value": true}],
+      "explain": "Курьер {c.name} передвигается на транспорте «{c.vehicle_label}» - учитываются пешеходные зоны, пробки для него не действуют"
+    },
+    {
+      "id": "R6", "no": "6", "name": "Зона с ограничением въезда", "phase": ["classify"], "salience": 45,
+      "if": [
+        {"bind": "o", "type": "order", "test": [["o.restricted", "==", true]]}
+      ],
+      "then": [{"set": "o.needs_eco", "value": true}],
+      "explain": "Заказ {o.id} находится в зоне «{o.zone_name}» с ограничением въезда - назначается курьеру без автомобиля"
+    },
+    {
+      "id": "R6.2", "no": "6", "name": "Нет курьера для зоны с ограничением", "phase": ["check"], "salience": 40,
+      "if": [
+        {"bind": "u", "type": "unassigned", "test": [["u.reason", "==", "restricted_zone"]]}
+      ],
+      "then": [{"warn": "Заказ {u.order_id} в зоне с ограничением въезда: нет свободного курьера на велосипеде или пешком - требуется решение диспетчера"}],
+      "explain": "Для заказа {u.order_id} не найден курьер с подходящим транспортом, диспетчер предупрежден"
+    },
+    {
+      "id": "R7", "no": "7", "name": "Близко расположенные заказы", "phase": ["classify"], "salience": 35,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "o1", "type": "order"},
+        {"bind": "o2", "type": "order", "test": [
+          ["o1.id", "<", "@o2.id"],
+          ["distance_km(o1,o2)", "<=", "@s.cluster_radius_km"]
+        ]}
+      ],
+      "then": [{"assert": {"type": "near", "a": "@o1.id", "b": "@o2.id"}}],
+      "explain": "Заказы {o1.id} и {o2.id} находятся в {distance_km(o1,o2)|km} км друг от друга - объединяются в один сегмент маршрута"
+    },
+    {
+      "id": "R8", "no": "8", "name": "Отклонение от маршрута", "phase": ["event"], "salience": 40,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "e", "type": "event", "test": [
+          ["e.kind", "==", "deviation"],
+          ["e.distance_km", ">=", "@s.deviation_km"]
+        ]},
+        {"bind": "r", "type": "route", "test": [["r.id", "==", "@e.route_id"]]}
+      ],
+      "then": [{"set": "r.needs_recalc", "value": true}],
+      "explain": "Курьер отклонился от маршрута {r.id} на {e.distance_km|km} км - маршрут пересчитывается автоматически"
+    },
+    {
+      "id": "R9", "no": "9", "name": "Новый срочный заказ", "phase": ["classify"], "salience": 20,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "o", "type": "order", "test": [
+          ["o.urgent", "==", true],
+          ["o.late_added", "==", true]
+        ]},
+        {"bind": "c", "type": "courier", "test": [
+          ["c.status", "==", "free"],
+          ["c.capacity_left", ">=", "@o.weight"],
+          ["distance_km(c,o)", "<=", "@s.nearby_km"]
+        ]}
+      ],
+      "then": [{"set": "o.preferred_courier", "value": "@c.id"}],
+      "explain": "Поступил новый срочный заказ {o.id}, свободный курьер {c.name} находится в {distance_km(c,o)|km} км - заказ добавляется в его маршрут"
+    },
+    {
+      "id": "R10", "no": "10", "name": "Перекрытие дороги", "phase": ["classify", "event"], "salience": 45,
+      "if": [
+        {"bind": "g", "type": "segment", "test": [["g.state", "==", "RoadClosure"]]}
+      ],
+      "then": [{"set": "g.policy", "value": "detour_only"}],
+      "explain": "Участок «{g.name}» перекрыт - маршрут пересчитывается и строится только в объезд"
+    },
+    {
+      "id": "R11", "no": "11", "name": "Клиент недоступен", "phase": ["event"], "salience": 40,
+      "if": [
+        {"bind": "e", "type": "event", "test": [["e.kind", "==", "client_unavailable"]]},
+        {"bind": "o", "type": "order", "test": [["o.id", "==", "@e.order_id"]]}
+      ],
+      "then": [{"set": "o.status", "value": "retry"}],
+      "explain": "Клиент заказа {o.id} недоступен - заказ помечен «повторная попытка» и будет включен в следующий маршрут"
+    },
+    {
+      "id": "R12", "no": "12", "name": "Маршрут завершен", "phase": ["event"], "salience": 30,
+      "if": [
+        {"bind": "r", "type": "route", "test": [
+          ["r.remaining", "==", 0],
+          ["r.status", "!=", "completed"]
+        ]},
+        {"bind": "c", "type": "courier", "test": [["c.id", "==", "@r.courier_id"]]}
+      ],
+      "then": [{"set": "r.status", "value": "completed"}, {"set": "c.status", "value": "free"}],
+      "explain": "В маршруте {r.id} не осталось заказов - маршрут завершен, курьер {c.name} свободен"
+    },
+    {
+      "id": "R13", "no": "13", "name": "Низкий рейтинг курьера", "phase": ["classify"], "salience": 45,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "c", "type": "courier", "test": [["c.rating", "<", "@s.min_rating"]]}
+      ],
+      "then": [{"set": "c.can_take_high", "value": false}],
+      "explain": "Рейтинг курьера {c.name} ({c.rating}) ниже порога {s.min_rating} - заказы с высоким приоритетом ему не назначаются"
+    },
+    {
+      "id": "R13.2", "no": "13", "name": "Нет курьера для срочного заказа", "phase": ["check"], "salience": 40,
+      "if": [
+        {"bind": "u", "type": "unassigned", "test": [["u.reason", "==", "rating"]]}
+      ],
+      "then": [{"warn": "Заказ {u.order_id} с высоким приоритетом: нет свободного курьера с достаточным рейтингом - требуется решение диспетчера"}],
+      "explain": "Срочный заказ {u.order_id} не назначен: у свободных курьеров рейтинг ниже порога"
+    },
+    {
+      "id": "R14", "no": "14", "name": "Окончание смены", "phase": ["check"], "salience": 30,
+      "if": [
+        {"bind": "s", "type": "settings"},
+        {"bind": "r", "type": "plan_route", "test": [
+          ["r.end_min", ">", "@r.shift_limit_min"]
+        ]}
+      ],
+      "then": [{"warn": "Курьер {r.courier_name} закончит маршрут в {r.end_min|time}, смена заканчивается в {r.shift_end_min|time} - перераспределите оставшиеся заказы"}],
+      "explain": "Маршрут курьера {r.courier_name} заканчивается позже, чем за {s.shift_margin_min} мин до конца смены"
+    }
+  ]
+}

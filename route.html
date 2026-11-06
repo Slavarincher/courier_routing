@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block who %}Курьер: {{ courier.short_name }}{% endblock %}
+{% block content %}{% set cur = route.pending[0] if route.pending else None %}
+<div class="card">
+  <h2>Экран 3. Маршрут {{ route.id }}
+    {% if route.status == 'completed' %}<span class="tag low">завершен</span>{% else %}<span class="tag info">в работе</span>{% endif %}</h2>
+  <div class="muted">Курьер {{ courier.short_name }} ({{ courier.vehicle_label|lower }}), утвержден вариант {{ route.variant_label }}, начало {{ route.start_min|hhmm }}</div>
+
+  {% for n in route.notifications[:4] %}
+  <div class="box {{ 'warn' if ('пересчитан' in n or 'Правило' in n or 'позже окна' in n) else ('good' if 'завершен' in n or 'доставлен' in n else '') }}">{{ n }}</div>
+  {% endfor %}
+
+  <table style="margin-top:14px">
+    <tr><th>№</th><th>Заказ</th><th>Адрес</th><th>Окно</th><th>Прибытие</th><th>Вручение</th><th>Статус</th></tr>
+    {% for s in route.stops %}
+    <tr class="{{ 'done' if s.status in ('delivered', 'retry') else ('current' if cur and s is sameas cur) }}">
+      <td>{{ loop.index }}</td>
+      <td>{{ s.order_id }}{% if s.urgent %} <span class="tag high">срочный</span>{% endif %}</td>
+      <td>{{ s.address }}{% if s.note and s.status == 'pending' %}<div class="muted">{{ s.note }}</div>{% endif %}</td>
+      <td>{{ s.window_start|hhmm }}-{{ s.window_end|hhmm }}</td>
+      <td>{{ s.arrival|hhmm }}</td>
+      <td>{{ s.start|hhmm }}{% if s.late_min and s.status == 'pending' %} <span class="tag high">+{{ s.late_min }} мин</span>{% endif %}</td>
+      <td>{% if s.status == 'delivered' %}<span class="tag low">доставлен</span>
+          {% elif s.status == 'retry' %}<span class="tag medium">повторная попытка</span>
+          {% elif cur and s is sameas cur %}<span class="tag info">в пути</span>
+          {% else %}<span class="tag gray">ожидает</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div class="box">Протяженность: <b>{{ route.distance_km|dec }} км</b> &nbsp;&nbsp;
+    Окончание: <b>{{ route.end_min|hhmm }}</b> &nbsp;&nbsp;
+    Груз в машине: <b>{{ route.load|dec }} / {{ courier.capacity|dec }} кг</b> &nbsp;&nbsp;
+    Модельное время: <b>{{ route.clock|hhmm }}</b></div>
+
+  {% if route.status != 'completed' and cur %}
+  <div class="actions">
+    <form method="post" action="{{ url_for('route_event', rid=route.id) }}" class="inline">
+      <input type="hidden" name="kind" value="delivered">
+      <button class="btn ok">Заказ {{ cur.order_id }} доставлен</button></form>
+    <form method="post" action="{{ url_for('route_event', rid=route.id) }}" class="inline">
+      <input type="hidden" name="kind" value="client_unavailable">
+      <button class="btn sec">Клиент недоступен</button></form>
+  </div>
+  <div class="box">
+    <b>Сообщить о проблеме</b>
+    <div class="actions" style="margin-top:8px">
+      <form method="post" action="{{ url_for('route_event', rid=route.id) }}" class="inline">
+        <input type="hidden" name="kind" value="deviation">
+        Отклонился от маршрута на <input name="distance_km" value="1,0" size="4"> км
+        <button class="btn sec small">Сообщить</button></form>
+    </div>
+    <div class="actions">
+      <form method="post" action="{{ url_for('route_event', rid=route.id) }}" class="inline">
+        <input type="hidden" name="kind" value="road_closure">
+        Перекрыта дорога:
+        <select name="segment">{% for g in shift.segments %}<option value="{{ g.id }}">{{ g.name }} ({{ g.state_label }})</option>{% endfor %}</select>
+        <button class="btn sec small">Сообщить</button></form>
+    </div>
+  </div>
+  {% else %}
+  <div class="actions"><a class="btn pri" href="{{ url_for('index') }}">К вводу данных (курьер свободен)</a></div>
+  {% endif %}
+
+  {% if route.notifications|length > 4 or route.trace %}
+  <details>
+    <summary>История событий и сработавшие правила</summary>
+    <ul>{% for n in route.notifications %}<li>{{ n }}</li>{% endfor %}</ul>
+    {% if route.trace %}
+    <table class="trace">
+      <tr><th>Правило</th><th>Вывод</th></tr>
+      {% for t in route.trace %}<tr><td>{{ t.rule }}. {{ t.name }}</td><td>{{ t.text }}</td></tr>{% endfor %}
+    </table>{% endif %}
+  </details>
+  {% endif %}
+</div>
+{% endblock %}
